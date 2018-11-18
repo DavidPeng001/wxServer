@@ -19,4 +19,5 @@ from api import views
 
 urlpatterns = [
     url(r'^api/search/', views.keyword_search_api),
+    url(r'^admin/', views.connection_test)
 ]
