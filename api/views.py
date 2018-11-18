@@ -10,14 +10,29 @@ from urllib2 import HTTPError,URLError
 from lxml import etree
 import json
 
-@api_view(['POST'])
-def keyword_search_api(requset):
-	return Response(toJSON(keyword_search(requset.data)), status=200 )
-	# request.data should be unicode
-	# TODO: try to use url to transmit keyword
+@api_view(['POST','GET'])
+def keyword_search_api(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)[u'keyword']  # unicode
+		if data.strip() == '':
+			return Response(status = status.HTTP_400_BAD_REQUEST)
+		data = data.encode('utf-8')
+		page=  json.loads(request.body)[u'page']
+		# request.data should be json obj
+	elif request.method == 'GET':
+		data = request.GET.get('keyword', '')       # UTF-8
+		if data.strip() == '':
+			return Response(status = status.HTTP_400_BAD_REQUEST)
+		page = request.GET.get('page', 0)
+	else:
+		return Response(status = status.HTTP_405_METHOD_NOT_ALLOWED)
+	return Response(toJSON(keyword_search(data, page)), status=200)
 
-def keyword_search(keyword):
-	url = "http://opac.jnu.edu.cn/search*chx/?searchtype=X&SORT=D&searcharg=" + urllib2.quote(keyword.encode('utf-8')) + "&searchscope=1&submit.x=0&submit.y=0"
+
+def keyword_search(keyword,page):
+	seq = int(page)*12 + 1
+	url = "https://opac.jnu.edu.cn/search~S1*chx?/Xpython&searchscope=1&SORT=D/Xpython&searchscope=1&SORT=D&SUBKEY=" + \
+	      urllib2.quote(keyword) + '/' + str(seq) + "%2C499%2C499%2CB/browse"
 	headers = {
 	"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 	}
