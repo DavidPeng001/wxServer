@@ -76,15 +76,15 @@ WSGI_APPLICATION = 'wxServer.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'wechat',
-#         'USER': 'root',
-#         'PASSWORD': '123456',
-#         'HOST':'localhost',
-#         'PORT':'3306',    }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'jnuLibaray',
+        'USER': 'root',
+        'PASSWORD': '123456',
+        'HOST':'localhost',
+        'PORT':'3306',    }
+}
 
 
 # Password validation
