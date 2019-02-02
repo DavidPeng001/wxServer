@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'wxServer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'jnuLibaray',
+        'NAME': 'jnuLibrary',
         'USER': 'root',
         'PASSWORD': '123456',
         'HOST':'localhost',
