@@ -40,8 +40,8 @@ def login(request):
 	if request.method == 'POST':
 		data = json.loads(request.body)
 		personnelno = data[u'id']
-		password_lib = base64.b64decode(data[u'passwd_lib'])
-		password_space = base64.b64decode(data[u'passwd_space'])
+		password_lib = data[u'passwd_lib']
+		password_space = data[u'passwd_space']
 		if User.objects.filter(id=personnelno) != []:
 			robot.register(personnelno, password_lib, password_space)
 			s = SessionStore()
