@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
 from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
+
 import urllib2
 import json
 import base64
@@ -42,7 +44,7 @@ def login(request):
 		personnelno = data[u'id']
 		password_lib = data[u'passwd_lib']
 		password_space = data[u'passwd_space']
-		if User.objects.filter(id=personnelno) != []:
+		if not User.objects.filter(id=personnelno).exists():
 			robot.register(personnelno, password_lib, password_space)
 			s = SessionStore()
 			s['id'] = personnelno
@@ -52,10 +54,18 @@ def login(request):
 			return response
 		else:
 			if User.objects.get(id=personnelno).password_lib == password_lib:
-				return JsonResponse({'status': 'ok'}, safe=False)
+				s = SessionStore()
+				s['id'] = personnelno
+				# delete previous session
+				# print s.encode({'id': personnelno})
+				Session.objects.filter(session_data = s.encode({'id': personnelno})).delete()
+				s.save()
+				response = JsonResponse({'status': 'ok'}, safe=False)
+				response.set_cookie('JSESSIONID', s.session_key)
+				return response
 			else:
 				return JsonResponse({'status': 'wrong'}, safe=False)
-
+			# TODO: session 过期设置
 
 @api_view(['GET'])
 def quick_login(request):
