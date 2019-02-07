@@ -45,13 +45,16 @@ def login(request):
 		password_lib = data[u'passwd_lib']
 		password_space = data[u'passwd_space']
 		if not User.objects.filter(id=personnelno).exists():
-			robot.register(personnelno, password_lib, password_space)
-			s = SessionStore()
-			s['id'] = personnelno
-			s.create()
-			response = JsonResponse({'status': 'register_success'}, safe=False)
-			response.set_cookie('JSESSIONID', s.session_key)
-			return response
+			status = robot.register(personnelno, password_lib, password_space)
+			if status == 0:
+				s = SessionStore()
+				s['id'] = personnelno
+				s.create()
+				response = JsonResponse({'status': 'register_success'}, safe=False)
+				response.set_cookie('JSESSIONID', s.session_key)
+				return response
+			else:
+				return JsonResponse({'status': 'wrong'}, safe=False)
 		else:
 			if User.objects.get(id=personnelno).password_lib == password_lib:
 				s = SessionStore()
@@ -70,7 +73,10 @@ def login(request):
 @api_view(['GET'])
 def quick_login(request):
 	if request.method == 'GET':
-		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
-		return JsonResponse({'id': s['id']}, safe=False)
+		try:
+			s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
+			return JsonResponse({'id': s['id']}, safe=False)
+		except KeyError:
+			return JsonResponse({'id': u'wrong'}, safe=False)
 
 
