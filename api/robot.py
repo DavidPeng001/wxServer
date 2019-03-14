@@ -8,65 +8,34 @@ import json
 from api.models import User
 
 
-def keyword_search(keyword, page):  # keyword: str urlencode from utf-8  page: int
-	seq = page * 12 + 1
-	url = "https://opac.jnu.edu.cn/search~S1*chx?/X" + keyword + "&searchscope=1&SORT=D/X" + keyword + \
-	      "&searchscope=1&SORT=D&SUBKEY=/" + str(seq) + "%2C499%2C499%2CB/browse"
+def keyword_search(keyword,page):
+	seq = page*10
+	url = "https://opac.jnu.edu.cn/opac/search?searchModel=include&field=title&q=%s&pager.offset=%d" % (keyword, seq)
 	headers = {
-		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+	"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 	}
-	data = None
-	html = None
+
 	try:
-		request = urllib2.Request(url, data, headers)
-		html = urllib2.urlopen(request).read()
-	except (HTTPError, URLError):
+		response = requests.get(url, headers=headers)
+		html = response.content
+	except (HTTPError,URLError):
 		print "Couldn't connect to opac.jnu.edu.cn."
 		exit()
-	# TODO: if exception return something
-	# TODO: if html
-	html = html.decode('utf8')
-	selector = etree.HTML(html)
+	print 'Connection Established \n *****'
+	# html = html.decode('utf8')
+	tree = etree.HTML(html)
 
 	books = []
-	for index in range(4, 16):
-		root_path = "//table[@class='browseScreen']/tr[2]/td/table[1]/tr[" + str(index) + "]"
+	for index in range(1, 11):
+		root_path = "//div[@class='jp-searchList']/ul/li[%d]" % index
 		book_info = {}
-		book_info['name'] = selector.xpath(root_path + "//span[@class='briefcitTitle']//*/text()")[0]
-		contents = selector.xpath(root_path + "//td[@class='briefcitDetail']/text()")
-		for content in contents:
-			if content.strip() != '' and content.strip() != '\n':
-				content = "".join(content.split(u'\xa0'))[1:]
-				auth = content[content.find('/') + 1: content.find('\n')]
-				# remove \xa0 and \n on the front, then get part between / and \n
-				book_info['auth'] = "".join(auth.split())[:-1].split(u'，')
-				# remove all space and 著 at last, then get a list
-				publish = content[content.find('\n') + 1: content.rfind('\n')]
-				book_info['publish'] = publish[
-				                       publish.find(':') + 1 if (publish.find(':') != -1) else 0: publish.rfind(',')]
-				# print book_info['auth']
-				# print book_info['publish']
-				break
-		# FIXME: 作者字段大部分以‘著’结束，但少数以‘编著’结束，或以‘\n’结束
-		book_info['libinfo'] = []
-		try:
-			for i in range(1, 4):
-				lib_info = {}
-				location = selector.xpath(root_path + "//tr[@class='bibItemsEntry'][$seq]/td[1]/text()", seq=i)
-				if len(location) == 2:  # when location field is a hyperlink length of location list is 2
-					location = selector.xpath(root_path + "//tr[@class='bibItemsEntry'][$seq]/td[1]/*/text()", seq=i)[0]
-				else:
-					location = location[0]
-				index = selector.xpath(root_path + "//tr[@class='bibItemsEntry'][$seq]/td[2]//*/text()", seq=i)[0]
-				status = selector.xpath(root_path + "//tr[@class='bibItemsEntry'][$seq]/td[4]/text()", seq=i)[0]
-				lib_info['location'] = "".join(location.split(u'\xa0')).strip()
-				lib_info['index'] = index
-				lib_info['status'] = "".join(status.split(u'\xa0')).strip()
-				book_info['libinfo'].append(lib_info)
-		except IndexError:
-			pass
+		book_info['title'] = tree.xpath(root_path + "/h2/a/text()")[0]
+		book_info['auth'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='creator']//a/text()")[0].strip()
+		book_info['publisher'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='publisher']/text()")[-1].strip()
+		book_info['topic'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='subject']/text()")[-1].strip()
 		books.append(book_info)
-	return books
+	return  books
+
 
 
 def register(personnelno, passwd_lib, passwd_space):
