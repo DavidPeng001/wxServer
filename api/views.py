@@ -22,7 +22,7 @@ def keyword_search_api(request):
 			return Response(status = status.HTTP_400_BAD_REQUEST)
 		data = urllib2.quote(data.encode('utf-8'))
 		page=  json.loads(request.body)[u'page']
-		# request.data should be json obj
+		# request.data should be json obj TODO: exceotion handle
 	elif request.method == 'GET':
 		data = request.GET.get('keyword', '')       # URL
 		if data.strip() == '':
@@ -80,3 +80,29 @@ def quick_login(request):
 			return JsonResponse({'id': u'wrong'}, safe=False)
 
 
+@api_view(['POST'])
+def room_search(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)
+		start, end = data['start'], data['end']
+		table = robot.get_room_table(data['date'])
+		results = []
+		for room_name, room_list in table.items():
+			if max(room_list[start - 8: end - 8]) == 0:
+				continue
+			hour_length = []  # 记录每一时刻之前(包括该时刻)的连续可用时长
+			for hour in room_list[start - 8: end - 8]:
+				if hour == 1:
+					if hour_length != []:
+						hour_length.append(hour_length[-1] + 1)
+					else:  # first of loop
+						hour_length.append(1)
+				else:
+					hour_length.append(0)
+			result = dict()
+			result['room'] = room_name
+			result['end'] = start + hour_length.index(max(hour_length)) + 1
+			result['length'] = max(hour_length)
+			result['start'] = result['end'] - result['length']
+			results.append(result)
+		JsonResponse(sorted(results, key=lambda x: x.pop('length'), reverse=True), safe=False)

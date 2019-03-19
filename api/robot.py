@@ -10,7 +10,7 @@ from api.models import User
 
 def keyword_search(keyword,page):
 	seq = page*10
-	url = "https://opac.jnu.edu.cn/opac/search?searchModel=include&field=title&q=%s&pager.offset=%d" % (keyword, seq)
+	url = "https://opac.jnu.edu.cn/opac/search?searchModel=contain&field=title&q=%s&pager.offset=%d" % (keyword, seq)
 	headers = {
 	"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 	}
@@ -32,7 +32,22 @@ def keyword_search(keyword,page):
 		book_info['title'] = tree.xpath(root_path + "/h2/a/text()")[0]
 		book_info['auth'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='creator']//a/text()")[0].strip()
 		book_info['publisher'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='publisher']/text()")[-1].strip()
-		book_info['topic'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='subject']/text()")[-1].strip()
+		topic_list = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='subject']/text()")
+		if topic_list == []:
+			book_info['topic'] = ""
+		else:
+			topics = topic_list[-1].split('\t')
+			topic_list = []
+			for topic in topics:
+				topic = topic.replace(u'\r\n', u'').strip(u'\xa0')
+				if topic != '':
+					topic_list.append(topic)
+					topic_list = list(set(topic_list))
+			book_info['topic'] = " ".join(topic_list)
+		book_info['href'] = tree.xpath(root_path + "/h2/a/@href")[0].replace('/opac/book/', '').strip('\r\n')
+		book_info['langrage'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
+		book_info['index'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='call_number']/text()")[-1].strip()
+		book_info['isbn'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='isbn']/text()")[-1].strip()
 		books.append(book_info)
 	return  books
 
@@ -105,13 +120,12 @@ def get_single_page(tree):
 					current_list.append(0)
 			else:
 				current_list.append(0)
-		result_dict[current_room[0]] = current_list
+		result_dict[current_room[0][-3:]] = current_list # remove u‘研修室’'
 	return result_dict
 	# XXX: using bit may be faster than list
 
 
-def get_xhr_response(date = 0):
-	# today -> 0  tomorrow -> 1 ......
+def get_room_table(date = 0):
 	url = "https://libsouthic.jnu.edu.cn"
 	main_url = "https://libsouthic.jnu.edu.cn/ic?id=4"
 	date_url = "https://libsouthic.jnu.edu.cn/ic/index.curdateindex/%s?id=4" # %s is a seq number string from HTML

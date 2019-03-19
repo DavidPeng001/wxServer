@@ -21,5 +21,6 @@ urlpatterns = [
     url(r'^api/search/', views.keyword_search_api),
     url(r'^admin/', views.connection_test),
     url(r'^api/login/', views.login),
-    url(r'^api/quicklogin/', views.quick_login)
+    url(r'^api/quicklogin/', views.quick_login),
+    url(r'^api/roomsearch/', views.room_search)
 ]
