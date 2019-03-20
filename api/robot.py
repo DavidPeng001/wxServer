@@ -47,7 +47,9 @@ def keyword_search(keyword,page):
 		book_info['href'] = tree.xpath(root_path + "/h2/a/@href")[0].replace('/opac/book/', '').strip('\r\n')
 		book_info['langrage'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
 		book_info['index'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='call_number']/text()")[-1].strip()
-		book_info['isbn'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='isbn']/text()")[-1].strip()
+		isbn = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='isbn']/text()")
+		if isbn != []:
+			book_info['isbn'] = isbn[-1].strip()
 		books.append(book_info)
 	return  books
 
