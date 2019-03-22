@@ -31,7 +31,10 @@ def keyword_search(keyword,page):
 	for index in range(1, 11):
 		root_path = "//div[@class='jp-searchList']/ul/li[%d]" % index
 		book_info = {}
-		book_info['title'] = tree.xpath(root_path + "/h2/a/text()")[0]
+		title = tree.xpath(root_path + "/h2/a/text()")
+		if title == []:
+			break
+		book_info['title'] = title[0]
 		book_info['auth'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='creator']//a/text()")[0].strip()
 		book_info['publisher'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='publisher']/text()")[-1].strip()
 		topic_list = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='subject']/text()")
@@ -47,7 +50,7 @@ def keyword_search(keyword,page):
 					topic_list = list(set(topic_list))
 			book_info['topic'] = " ".join(topic_list)
 		book_info['href'] = tree.xpath(root_path + "/h2/a/@href")[0].replace('/opac/book/', '').strip('\r\n')
-		book_info['language'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
+		book_info['langrage'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
 		book_info['index'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='call_number']/text()")[-1].strip()
 		isbn = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='isbn']/text()")
 		if isbn != []:
