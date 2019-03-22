@@ -106,3 +106,21 @@ def room_search(request):
 			result['start'] = result['end'] - result['length']
 			results.append(result)
 		JsonResponse(sorted(results, key=lambda x: x.pop('length'), reverse=True), safe=False)
+
+@api_view(['POST'])
+def room_booking(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)
+		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
+		user = User.objects.get(id=s['id'])
+		status = robot.room_booking(data['date'], data['room'], data['start'], data['end'], user.sessionid_space)
+		if status == 2:  # sessionid_space expired
+			if robot.update_sessionid_space(user.id,user.password_space) == 0:
+				status = robot.room_booking(data['date'], data['room'], data['start'], data['end'],user.sessionid_space)
+			else:
+				status = 3
+		return JsonResponse({'status': status}, safe=False)
+
+
+
+

@@ -2,9 +2,11 @@
 import urllib2
 from urllib2 import HTTPError,URLError
 from lxml import etree
+from requests.cookies import RequestsCookieJar
 import urllib
 import requests
 import json
+import datetime
 from api.models import User
 
 
@@ -45,7 +47,7 @@ def keyword_search(keyword,page):
 					topic_list = list(set(topic_list))
 			book_info['topic'] = " ".join(topic_list)
 		book_info['href'] = tree.xpath(root_path + "/h2/a/@href")[0].replace('/opac/book/', '').strip('\r\n')
-		book_info['langrage'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
+		book_info['language'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='libraryCount']/span/text()")[-1].strip('\r\n')
 		book_info['index'] = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='call_number']/text()")[-1].strip()
 		isbn = tree.xpath(root_path + "/div[@class='jp-booksInfo']/p[@class='isbn']/text()")
 		if isbn != []:
@@ -167,5 +169,93 @@ def get_room_table(date = 0):
 		page_tree = etree.HTML(html)
 		result_dict.update(get_single_page(page_tree))
 	return result_dict
+
+
+def room_booking(date, room, start, end, jsessionid):
+	hidden_base = [60, 66, 95, 108, 135]
+	layer_room_num = int(room[-2:])
+	if 205 >= int(room) >= 202:
+		hidden = hidden_base[0] + layer_room_num
+	elif 227 >= int(room) >= 216:
+		hidden = hidden_base[1] + layer_room_num
+	elif 313 >= int(room) >= 301:
+		hidden = hidden_base[2] + layer_room_num
+	elif 327 >= int(room) >= 316:
+		hidden = hidden_base[3] + layer_room_num
+	elif 427 >= int(room) >= 401:
+		hidden = hidden_base[4] + layer_room_num
+	else:
+		print 'Wrong room number'
+		return
+	# TODO: limit date scope
+	abs_date = (datetime.datetime.now() + datetime.timedelta(days=date)).strftime('%Y-%m-%d ')
+	startdate = abs_date + str(start) +':00:00'
+	enddate = abs_date + str(end) + ':00:00'
+
+	url_booking = "https://libsouthic.jnu.edu.cn/user/reserve.reserveform"
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+		"Content-Type": "application/x-www-form-urlencoded",
+		'X-Requested-With': "XMLHttpRequest",
+	}
+	data_booking = {
+		"t:formdata": "qT85M15q6UFbt7NvA22jo+rLrFU=:H4sIAAAAAAAAAJVSsU7DMBC9RlCKulFagVgYypoy0AUWKiQEUoUQEQsLcuIjNUrsYDttWZiQ+AYWvgAxgcTegY1/4ANYGJgYcBqoWkIrdbF953fvPd/5/h1mO2UoxQpl7QjN2sbNFqMUuZKwLaRvk4h4LbQ1iVBpeVm3PSExYK7Zw0hw5FrZe/2K6qEUHirlxG7IlGKCn9yslrorz3kLck0oeoJrKYIDEqKGheY5aZNaQLhfc7Rk3N/qRhryqXhnCSojnvyYSMpNpbFVn2jLJQrthmuSxNO7DANadVDH0dpxr/hWfvnKeLmAK8gl2vMDkYnyjWnlM23pPdCNs8+7VwugG2W0lCZSU6JRJc5mjK9BZjw2gRY6FVgcuUZOh4nmfuJxuJTk73eQSJTgvxz5NByD+p9BJS/X03yofq90tnO3zsfy0+P1jgVWEwpewAx6n/YnaIaKAYYmMTLUQip+uj50/AbYYqzf9gIAAA==",
+		"t:submit": "[\"submit_0\",\"submit_0\"]",
+		"hidden": hidden,
+		"startdate": startdate,
+		"enddate": enddate,
+		"reason": "",
+		"t:zoneid": "reserveformzone"
+	}
+	cookie_jar = RequestsCookieJar()
+	cookie_jar.set("JSESSIONID", jsessionid, domain="libsouthic.jnu.edu.cn")
+
+	response_booking = requests.post(url_booking, data=data_booking, headers=headers, cookies=cookie_jar)
+	if response_booking.status_code == 200:
+		data = None
+		try:
+			data = json.loads(response_booking.content)
+		except ValueError:
+			return 2     # not login
+		print data
+		if u'redirectURL' in data:
+			return 0     # success
+		else:
+			return 1     # time conflict or others
+	else:
+		return -1        # bad connection
+
+def update_sessionid_space(personnelno, password_space):
+	url_space = "https://libsouthic.jnu.edu.cn/login.userlogin"
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+		"Content-Type": "application/x-www-form-urlencoded"
+		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
+	}
+	data_space = {
+		"t:formdata": "YO0mInLsxupSFzTGH68d4QXjK7k=:H4sIAAAAAAAAAJWQPUoEQRCFywFlYWURwcBc014DN9HERRCEQYTBWHp6yrGlp7vtqnHWxMhLmHgCMdITbGDmHTyAiYGRgfODsLAimBUfj3of7+EdFqsBLMcu13anJAw6owAjF3IhvVTnKFh6JA7XI6FcQKNTkUpCMU5rKBUfaDTZRoJc+s2Taf9t7eUrgoUY+spZDs4cyQIZVuMLeSWHRtp8mHDQNt+deIalrvEXg/F/DY6DU0iUlGmhibSz08ds++zz/jUCmPhqBQZdg5dElQsZXcINAEPvB8xHmsTMOtS85tpt70835QrvLFom0crwvNpd8rH+/HS7H0EUQ08ZXacP27pmODRY1KAZrkXNUL2u/HRr5vwGvfD11LwBAAA=",
+		"t:submit": "[\"submit_0\",\"submit_0\"]",
+		"userid": personnelno,
+		"password": password_space,
+		"submit_0": "登录",
+	}
+	cookie_space = ''
+
+
+	response_space = requests.post(url_space, data=urllib.urlencode(data_space), headers=headers)
+	html = response_space.content.decode('utf8')
+	selector = etree.HTML(html)
+	error_test = selector.xpath("//div[@class='t-error']")
+	if error_test != []:
+		return 1
+	for k, v in response_space.history[0].cookies.items():
+		if k == 'JSESSIONID':
+			cookie_space = v
+
+	User.objects.get(id=personnelno).update(sessionid_space=cookie_space)
+
+	return 0
+
+# 0 -> success  1 -> password wrong  -1 -> error
 
 
