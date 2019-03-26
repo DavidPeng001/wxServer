@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import urllib2
 from urllib2 import HTTPError,URLError
+from urllib import urlencode
 from lxml import etree
 from requests.cookies import RequestsCookieJar
 import urllib
@@ -265,6 +266,7 @@ def update_sessionid_space(personnelno, password_space):
 def get_some_field(html):
 	isbn_str = ''
 	summary_str = ''
+	book_id = html.xpath()
 	for i in range(1,8):
 		try:
 			root_path = "//*[@id='detailsTable']tr[%d]" % i
@@ -276,5 +278,11 @@ def get_some_field(html):
 					summary_str += '...'
 		except IndexError
 			continue
-
+	url_detail = "https://opac.jnu.edu.cn/opac/book/getHoldingsInformation/" + book_id
+	response_details = requests.get(url_detail, headers)
+	details = json.loads(response)
+	loc_str = ""
+	for detail in details:
+		loc_str += '[#]' + detail[u'部门名称'] + '[*]' + detail[u'索书号'] + '[#]'
 		
+	url_loc = "https://ifg.zhaobenshu.com/Find/find_ifc_GetSiteColl1.aspx?a=jnu&b=&c=%s&d=&x=josnp1365255842541256&y=1&z=YJmkd3Ngdy1557059656" % urlencode(loc_str)
