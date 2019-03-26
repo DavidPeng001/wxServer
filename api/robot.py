@@ -262,3 +262,19 @@ def update_sessionid_space(personnelno, password_space):
 # 0 -> success  1 -> password wrong  -1 -> error
 
 
+def get_some_field(html):
+	isbn_str = ''
+	summary_str = ''
+	for i in range(1,8):
+		try:
+			root_path = "//*[@id='detailsTable']tr[%d]" % i
+			if html.xpath(root_path + "/th/text()") != [] and html.xpath(root_path + "/th/text()")[0] == u'ISBN/价格：' :
+				isbn_str = html.xpath(root_path + "/td/txet()")[0]
+			if html.xpath(root_path + "/th/text()") != [] and html.xpath(root_path + "/th/text()")[0] == u'内容简介：':
+				summary_str = html.xpath(root_path + "/td/txet()")[0]
+				if html.xpath(root_path + "/td/a") != []:
+					summary_str += '...'
+		except IndexError
+			continue
+
+		
