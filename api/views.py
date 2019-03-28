@@ -111,7 +111,7 @@ def room_search(request):
 			result['length'] = max(hour_length)
 			result['start'] = result['end'] - result['length']
 			results.append(result)
-		JsonResponse(sorted(results, key=lambda x: x.pop('length'), reverse=True), safe=False)
+		return  JsonResponse(sorted(results, key=lambda x: x.pop('length'), reverse=True), safe=False)
 
 @api_view(['POST'])
 def room_booking(request):
