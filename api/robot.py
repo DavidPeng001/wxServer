@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import urllib2
 from urllib2 import HTTPError,URLError
-from urllib import urlencode
+from urllib import quote
 from lxml import etree
 from requests.cookies import RequestsCookieJar
 import urllib
@@ -262,27 +262,67 @@ def update_sessionid_space(personnelno, password_space):
 
 # 0 -> success  1 -> password wrong  -1 -> error
 
+def search_info(href):
+	url_site = "https://opac.jnu.edu.cn/opac/book/" + href
+	url_info = "https://opac.jnu.edu.cn/opac/book/getHoldingsInformation/"
+	url_loc = "https://ifg.zhaobenshu.com/Find/find_ifc_GetSiteColl1.aspx?a=jnu&b=&c=%s&d=&x=josnp1365255842541256&y=1&z=YJmkd3Ngdy1557059656"
 
-def get_some_field(html):
-	isbn_str = ''
-	summary_str = ''
-	book_id = html.xpath()
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+	}
+
+	try:
+		response = requests.get(url_site, headers=headers)
+		html = response.content
+	except (HTTPError, URLError):
+		print "Couldn't connect to opac.jnu.edu.cn."
+		return
+	print 'Connection Established \n *****'
+	# html = html.decode('utf8')
+	tree = etree.HTML(html)
+	book_id = tree.xpath("//input[@id='bookId']/@value")[0]
+	isbn = None
+	summary = None
 	for i in range(1,8):
 		try:
-			root_path = "//*[@id='detailsTable']tr[%d]" % i
-			if html.xpath(root_path + "/th/text()") != [] and html.xpath(root_path + "/th/text()")[0] == u'ISBN/价格：' :
-				isbn_str = html.xpath(root_path + "/td/txet()")[0]
-			if html.xpath(root_path + "/th/text()") != [] and html.xpath(root_path + "/th/text()")[0] == u'内容简介：':
-				summary_str = html.xpath(root_path + "/td/txet()")[0]
-				if html.xpath(root_path + "/td/a") != []:
-					summary_str += '...'
-		except IndexError
+			root_path = "//*[@id='detailsTable']/tr[%d]" % i
+			if tree.xpath(root_path + "/th/text()") != [] and tree.xpath(root_path + "/th/text()")[0] == u'ISBN/价格：' :
+				isbn = tree.xpath(root_path + "/td/text()")
+				if len(isbn) != []:
+					isbn = isbn[-1].split(':')[0]
+			# if tree.xpath(root_path + "/th/text()") != [] and tree.xpath(root_path + "/th/text()")[0] == u'内容简介:':
+			# 	summary = tree.xpath(root_path + "/td/text()")[0]
+			# 	if tree.xpath(root_path + "/td/a") != []:
+			# 		summary += '...'
+		except IndexError:
 			continue
-	url_detail = "https://opac.jnu.edu.cn/opac/book/getHoldingsInformation/" + book_id
-	response_details = requests.get(url_detail, headers)
-	details = json.loads(response)
+	try:
+		response_detail = requests.get(url_info + book_id, headers=headers)
+	except (HTTPError, URLError):
+		print "Couldn't connect to opac.jnu.edu.cn."
+		return
+	details = json.loads(response_detail.content)
 	loc_str = ""
+	result_status = []
 	for detail in details:
 		loc_str += '[#]' + detail[u'部门名称'] + '[*]' + detail[u'索书号'] + '[#]'
+		result_status.append(detail["bookstatus"])
+	response_loc = requests.get(url_loc % quote(loc_str.encode('utf8')), headers=headers)
+	locations = json.loads(response_loc.content[response_loc.content.find('(') + 1: -2])
+	result_loc = []
+	if locations["error"] == "0":
+		i = 0
+		for loc in locations["find_ifc_GetSiteColl1_list1"]:
+			result_loc.append({"location": loc["Sublib"] + loc["Room"] + loc["Site"], "status": result_status[i]})
+			i += 1
+	else:
+		for detail in details:
+			result_loc.append({"location": detail[u'部门名称'], "status": detail["bookstatus"]})
+	result = dict()
+	result['pic'] = "https://opac.jnu.edu.cn/opac/book/getImgByteById?bookId=%s&isbn=%s" % (book_id, isbn)
+	# result['summary'] = summary
+	# TODO: finish summary crawler
+	result['libinfo'] = result_loc
+
+	return result
 		
-	url_loc = "https://ifg.zhaobenshu.com/Find/find_ifc_GetSiteColl1.aspx?a=jnu&b=&c=%s&d=&x=josnp1365255842541256&y=1&z=YJmkd3Ngdy1557059656" % urlencode(loc_str)

@@ -32,7 +32,13 @@ def keyword_search_api(request):
 		return Response(status = status.HTTP_405_METHOD_NOT_ALLOWED)
 	return JsonResponse(robot.keyword_search(data, int(page)), safe=False)
 
-
+@api_view(['POST'])
+def info_search_api(request):
+	if request.method == 'POST':
+		href = json.loads(request.body)[u'href']  # unicode
+		if href.strip() == '':
+			return Response(status = status.HTTP_400_BAD_REQUEST)
+		return JsonResponse(robot.search_info(href), safe=False)
 
 def connection_test(request):
 	return HttpResponse('Welcome! Connection is right.')
