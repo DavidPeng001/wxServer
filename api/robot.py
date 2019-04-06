@@ -146,12 +146,15 @@ def get_room_table(date = 0):
 		'Content-type': "application/x-www-form-urlencoded",
 		'Referer': "https://libsouthic.jnu.edu.cn/ic?id=4",
 	}
+	# get date_href
 	request = urllib2.Request(url=main_url, headers=xhr_headers)
 	html = urllib2.urlopen(request).read()
 	html = html.decode('utf8')
 	main_tree = etree.HTML(html)
 	date_href = main_tree.xpath("//div[@id='actionzone']/table/tr/td[$date]/div/a/@href", date=date+2)[0]
 	print date_href
+
+	# get page_href list
 	response = requests.post(url + date_href, data='t%3Azoneid=detailzone', headers=xhr_headers)
 	html = json.loads(response.content)['content']
 	date_tree = etree.HTML(html)
@@ -159,19 +162,25 @@ def get_room_table(date = 0):
 	pages = [url + date_href]
 	page_index = 0
 	while True:
-		page_index = page_index+ 1
+		page_index = page_index + 1
 		page_id = date_tree.xpath("//div[@class='t-data-grid-pager']/a[$i]/@id", i=page_index)
 		if page_id == []:
 			break
 		pages.append(page_url % (page_index+1, page_href))
-	# XXX: pages[0] should not be posted again
+	# get cookie for every page and refresh date_url
 	result_dict = dict()
 	for page in pages:
 		print page
 		response = requests.post(page, headers= xhr_headers)
+		jsessionid = None
+		for k, v in response.cookies.items():
+			if k == 'JSESSIONID':
+				jsessionid = v
+		cookie_jar = RequestsCookieJar()
+		cookie_jar.set("JSESSIONID", jsessionid, domain="libsouthic.jnu.edu.cn")
+		response = requests.post(url + date_href, data='t%3Azoneid=detailzone', headers=xhr_headers, cookies=cookie_jar)
 		html = json.loads(response.content)['content']
-		page_tree = etree.HTML(html)
-		result_dict.update(get_single_page(page_tree))
+		result_dict.update(get_single_page(etree.HTML(html)))
 	return result_dict
 
 
