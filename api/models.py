@@ -10,3 +10,8 @@ class User(models.Model):
 	sessionid_lib = models.CharField(max_length=36)
 	sessionid_space = models.CharField(max_length=36)
 
+class Room(models.Model):
+	id = models.AutoField(primary_key=True)
+	date = models.IntegerField()
+	room = models.CharField(max_length=10)
+	availability = models.IntegerField()

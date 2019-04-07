@@ -133,7 +133,7 @@ def get_single_page(tree):
 	# XXX: using bit may be faster than list
 
 
-def get_room_table(date = 0):
+def get_room_table(date):
 	url = "https://libsouthic.jnu.edu.cn"
 	main_url = "https://libsouthic.jnu.edu.cn/ic?id=4"
 	date_url = "https://libsouthic.jnu.edu.cn/ic/index.curdateindex/%s?id=4" # %s is a seq number string from HTML
@@ -182,7 +182,7 @@ def get_room_table(date = 0):
 		html = json.loads(response.content)['content']
 		result_dict.update(get_single_page(etree.HTML(html)))
 	return result_dict
-
+	
 
 def room_booking(date, room, start, end, jsessionid):
 	hidden_base = [60, 66, 95, 108, 135]

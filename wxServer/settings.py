@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django_crontab'
     # 'django.contrib.staticfiles'
     'api',
 ]
@@ -103,6 +104,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+]
+
+CRONJOBS = [
+    ('*/10 * * * *', 'api.crons.save_room_table')
 ]
 
 

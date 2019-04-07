@@ -11,7 +11,7 @@ from django.contrib.sessions.models import Session
 import urllib2
 import json
 import base64
-from api.models import User
+from api.models import User, Room
 import api.robot as robot
 
 @api_view(['POST','GET'])
@@ -91,7 +91,13 @@ def room_search(request):
 	if request.method == 'POST':
 		data = json.loads(request.body)
 		start, end = data['start'], data['end']
-		table = robot.get_room_table(data['date'])
+		rooms = Room.objects.filter(date=data['date'])
+		# regenerate room table
+		table = dict()
+		for room in rooms:
+			room_dict = {room.room: list(bin(room.availability)) }
+			table.update(room_dict)
+		# sort by its available time length
 		results = []
 		for room_name, room_list in table.items():
 			if max(room_list[start - 8: end - 8]) == 0:
