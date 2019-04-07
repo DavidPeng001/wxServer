@@ -107,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 CRONJOBS = [
-    ('*/10 * * * *', 'api.crons.save_room_table')
+    ('*/10 * * * *', 'api.cron.save_room_table')
 ]
 
 
