@@ -107,7 +107,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 CRONJOBS = [
-    ('*/10 * * * *', 'api.cron.save_room_table')
+    ('*/15 * * * *', 'api.cron.save_room_table', '>> /var/log/django_crontab.log')
 ]
 
 

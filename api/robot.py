@@ -170,7 +170,6 @@ def get_room_table(date):
 	# get cookie for every page and refresh date_url
 	result_dict = dict()
 	for page in pages:
-		print page
 		response = requests.post(page, headers= xhr_headers)
 		jsessionid = None
 		for k, v in response.cookies.items():

@@ -12,6 +12,6 @@ def save_room_table():
 			for availbility in time_table:
 				binary_str += str(availbility)
 			availbility_str = int(binary_str, 2) # 2 -> 10
-			room_obj = Room(date=date, room=room, availbility=availbility_str)
+			room_obj = Room(date=date, room=room, availability=availbility_str)
 			room_obj.save()
 	print "room table update success."
