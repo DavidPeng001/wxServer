@@ -95,7 +95,8 @@ def room_search(request):
 		# regenerate room table
 		table = dict()
 		for room in rooms:
-			room_dict = {room.room: list(bin(room.availability)) }
+			base_bin = bin(room.availability)[2:]
+			room_dict = {room.room: list((15 - len(base_bin)) * '0' + base_bin)}
 			table.update(room_dict)
 		# sort by its available time length
 		results = []
