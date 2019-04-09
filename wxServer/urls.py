@@ -23,5 +23,8 @@ urlpatterns = [
     url(r'^admin/', views.connection_test),
     url(r'^api/login/', views.login),
     url(r'^api/quicklogin/', views.quick_login),
-    url(r'^api/roomsearch/', views.room_search)
+    url(r'^api/roomsearch/', views.room_search),
+    # warning: url mapping below should NOT be enabled in server
+    # url(r'^api/crontest/', views.save_room_table)
+
 ]
