@@ -24,6 +24,7 @@ urlpatterns = [
     url(r'^api/login/', views.login),
     url(r'^api/quicklogin/', views.quick_login),
     url(r'^api/roomsearch/', views.room_search),
+    url(r'^api/roombooking/', views.room_booking),
     # warning: url mapping below should NOT be enabled in server
     # url(r'^api/crontest/', views.save_room_table)
 
