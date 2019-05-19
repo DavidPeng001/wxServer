@@ -94,11 +94,11 @@ def pre_login(personnelno, passwd_lib, passwd_space):
 			sessionid_space = v
 
 	response_lib = requests.get(url_lib, headers=headers)
-	cookies_lib = response_lib.cookies
+	sessionid_lib = response_lib.cookies['JSESSIONID']
 	tree = etree.HTML(response_lib.content.decode('utf8'))
 	lt_token = tree.xpath("//input[@name='lt']/@value")[0]
 	execution_token = tree.xpath("//input[@name='execution']/@value")[0]
-	response_captcha = requests.get(url_captcha, headers=headers, cookies=cookies_lib)
+	response_captcha = requests.get(url_captcha, headers=headers, cookies=response_lib.cookies)
 	captcha_b64 = base64.b64encode(response_captcha.content)
 	data_lib = {
 		'username': personnelno,
@@ -108,17 +108,19 @@ def pre_login(personnelno, passwd_lib, passwd_space):
 		'execution': execution_token,
 		'_eventId': 'submit'
 	}
-	return {"status": 0, "session_data": (data_lib, cookies_lib, sessionid_space, personnelno, passwd_lib, passwd_space) , "response_data": captcha_b64}
+	return {"status": 0, "session_data": (data_lib, sessionid_lib, sessionid_space, personnelno, passwd_lib, passwd_space) , "response_data": captcha_b64}
 
-def lib_login(session_data, captcha_txet):
+def lib_login(session_data, captcha_text):
 	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
 	headers = {
 		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 		"Content-Type": "application/x-www-form-urlencoded"
 	}
 	data_lib = session_data[0]
-	data_lib['captcha'] = captcha_txet
-	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=session_data[1])
+	data_lib['captcha'] = captcha_text
+	cookie_lib = RequestsCookieJar()
+	cookie_lib.set('JSESSIONID', session_data[1], domain="libcas.jnu.edu.cn", path='/cas')
+	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=cookie_lib)
 	# TODO: check correctness
 	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
 	sessionid_space = session_data[2]
