@@ -8,6 +8,8 @@ import urllib
 import requests
 import json
 import datetime
+import random
+import base64
 from api.models import User
 
 
@@ -61,17 +63,16 @@ def keyword_search(keyword,page):
 
 
 
-def register(personnelno, passwd_lib, passwd_space):
-	url_lib = "https://libsouth.jnu.edu.cn/auth/login.json"
+def pre_login(personnelno, passwd_lib, passwd_space):
+	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
+	url_captcha = "https://libcas.jnu.edu.cn/cas/code/captcha.jpg" + str(random.uniform(0, 1))
+	# TODO: 随机化URL参数
+	# FIXME: 当url_captcha不变，会生成相同验证码图片
 	url_space = "https://libsouthic.jnu.edu.cn/login.userlogin"
 	headers = {
 		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 		"Content-Type": "application/x-www-form-urlencoded"
 		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
-	}
-	data_lib = {
-		"personnelno": personnelno,
-		"password": passwd_lib,
 	}
 	data_space = {
 		"t:formdata": "YO0mInLsxupSFzTGH68d4QXjK7k=:H4sIAAAAAAAAAJWQPUoEQRCFywFlYWURwcBc014DN9HERRCEQYTBWHp6yrGlp7vtqnHWxMhLmHgCMdITbGDmHTyAiYGRgfODsLAimBUfj3of7+EdFqsBLMcu13anJAw6owAjF3IhvVTnKFh6JA7XI6FcQKNTkUpCMU5rKBUfaDTZRoJc+s2Taf9t7eUrgoUY+spZDs4cyQIZVuMLeSWHRtp8mHDQNt+deIalrvEXg/F/DY6DU0iUlGmhibSz08ds++zz/jUCmPhqBQZdg5dElQsZXcINAEPvB8xHmsTMOtS85tpt70835QrvLFom0crwvNpd8rH+/HS7H0EUQ08ZXacP27pmODRY1KAZrkXNUL2u/HRr5vwGvfD11LwBAAA=",
@@ -80,34 +81,51 @@ def register(personnelno, passwd_lib, passwd_space):
 		"password": passwd_space,
 		"submit_0": "登录",
 	}
-	cookie_lib = ''
-	cookie_space = ''
 
-	response_lib = requests.post(url_lib, data=urllib.urlencode(data_lib), headers=headers)
-	html = response_lib.content.decode('utf8')
-	json_dict = json.loads(html)
-	if json_dict[u'errors'] != {}:
-		return 1
-	for k, v in response_lib.cookies.items():
-		if k == 'JSESSIONID':
-			cookie_lib = v
-
+	sessionid_space = ''
 	response_space = requests.post(url_space, data=urllib.urlencode(data_space), headers=headers)
 	html = response_space.content.decode('utf8')
 	selector = etree.HTML(html)
 	error_test = selector.xpath("//div[@class='t-error']")
 	if error_test != []:
-		return 1
+		return {"status": 1}
 	for k, v in response_space.history[0].cookies.items():
 		if k == 'JSESSIONID':
-			cookie_space = v
+			sessionid_space = v
 
-	user = User(id=personnelno, password_lib=passwd_lib, password_space=passwd_space, sessionid_lib=cookie_lib, sessionid_space=cookie_space)
+	response_lib = requests.get(url_lib, headers=headers)
+	cookies_lib = response_lib.cookies
+	tree = etree.HTML(response_lib.content.decode('utf8'))
+	lt_token = tree.xpath("//input[@name='lt']/@value")[0]
+	execution_token = tree.xpath("//input[@name='execution']/@value")[0]
+	response_captcha = requests.get(url_captcha, headers=headers, cookies=cookies_lib)
+	captcha_b64 = base64.b64encode(response_captcha.content)
+	data_lib = {
+		'username': personnelno,
+		'password': passwd_lib,
+		'captcha': "",
+		'lt': lt_token,
+		'execution': execution_token,
+		'_eventId': 'submit'
+	}
+	return {"status": 0, "session_data": (data_lib, cookies_lib, sessionid_space, personnelno, passwd_lib, passwd_space) , "response_data": captcha_b64}
+
+def lib_login(session_data, captcha_txet):
+	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+		"Content-Type": "application/x-www-form-urlencoded"
+	}
+	data_lib = session_data[0]
+	data_lib['captcha'] = captcha_txet
+	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=session_data[1])
+	# TODO: check correctness
+	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
+	sessionid_space = session_data[2]
+	user = User(id=session_data[3], password_lib=session_data[4], password_space=session_data[5], sessionid_lib=sessionid_lib,
+	            sessionid_space=sessionid_space)
 	user.save()
-
 	return 0
-
-	# 0 -> success  1 -> password wrong  -1 -> error
 
 def get_single_page(tree):
 	result_dict = {}

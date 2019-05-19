@@ -51,22 +51,22 @@ def login(request):
 		password_lib = data[u'passwd_lib']
 		password_space = data[u'passwd_space']
 		if not User.objects.filter(id=personnelno).exists():
-			status = robot.register(personnelno, password_lib, password_space)
-			if status == 0:
+			status = robot.pre_login(personnelno, password_lib, password_space)
+			if status["status"] == 0:
 				s = SessionStore()
-				s['id'] = personnelno
+				s['data'] = status["session_data"]
 				s.create()
-				response = JsonResponse({'status': 'register_success'}, safe=False)
+				response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 			else:
 				return JsonResponse({'status': 'wrong'}, safe=False)
 		else:
 			if User.objects.get(id=personnelno).password_lib == password_lib:
+
 				s = SessionStore()
 				s['id'] = personnelno
 				# delete previous session
-				# print s.encode({'id': personnelno})
 				Session.objects.filter(session_data = s.encode({'id': personnelno})).delete()
 				s.save()
 				response = JsonResponse({'status': 'ok'}, safe=False)
@@ -75,6 +75,41 @@ def login(request):
 			else:
 				return JsonResponse({'status': 'wrong'}, safe=False)
 			# TODO: session 过期设置
+
+@api_view(['GET'])
+def update_captcha(request):
+	if request.method == 'GET':
+		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
+		session_data = s["data"]
+		status = robot.pre_login(session_data[3], session_data[4], session_data[5])
+		if status["status"] == 0:
+			s = SessionStore()
+			s['data'] = status["session_data"]
+			s.create()
+			response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
+			response.set_cookie('JSESSIONID', s.session_key)
+			return response
+		else:
+			return JsonResponse({'status': 'wrong'}, safe=False)
+		
+@api_view(['POST'])
+def login_with_captcha(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)
+		captcha = data[u'captcha']
+		s = SessionStore(session_key=request.COOKIES['JSESSIONID']) # TODO: check is None
+		session_data = s["data"]
+		if robot.lib_login(session_data, captcha) == 0:
+			s = SessionStore()
+			s['id'] = session_data[3]
+			s.create()
+			response = JsonResponse({'status': 'ok'}, safe=False)
+			response.set_cookie('JSESSIONID', s.session_key)
+			return response
+		else:
+			return JsonResponse({'status': 'wrong'}, safe=False)
+
+
 
 @api_view(['GET'])
 def quick_login(request):
