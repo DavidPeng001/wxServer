@@ -51,10 +51,11 @@ def login(request):
 		password_lib = data[u'passwd_lib']
 		password_space = data[u'passwd_space']
 		if not User.objects.filter(id=personnelno).exists():
-			status = robot.pre_login(personnelno, password_lib, password_space)
+			status_space = robot.space_login(personnelno, password_space)
+			status_lib = robot.pre_login(personnelno, password_lib)
 			if status["status"] == 0:
 				s = SessionStore()
-				s['data'] = status["session_data"]
+				s['data'] = [personnelno, password_lib, password_space] + status_lib["session_data"] + status_space["session_data"]
 				s.create()
 				response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
@@ -81,10 +82,10 @@ def update_captcha(request):
 	if request.method == 'GET':
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
 		session_data = s["data"]
-		status = robot.pre_login(session_data[3], session_data[4], session_data[5])
+		status = robot.pre_login(session_data[0], session_data[1])
 		if status["status"] == 0:
 			s = SessionStore()
-			s['data'] = status["session_data"]
+			s['data'] = session_data[0,3] + status["session_data"] + session_data[-1]
 			s.create()
 			response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
 			response.set_cookie('JSESSIONID', s.session_key)
@@ -164,12 +165,62 @@ def room_booking(request):
 		user = User.objects.get(id=s['id'])
 		status = robot.room_booking(data['date'], data['room'], data['start'], data['end'], user.sessionid_space)
 		if status == 2:  # sessionid_space expired
-			if robot.update_sessionid_space(user.id,user.password_space) == 0:
+			if robot.space_login(user.id, user.password_space) == 0:
 				status = robot.room_booking(data['date'], data['room'], data['start'], data['end'],user.sessionid_space)
 			else:
-				status = 3
+				status = 3  # password wrong
+
 		return JsonResponse({'status': status}, safe=False)
 
+@api_view(['GET'])
+def book_renew_search(request):
+	if request.method == 'GET':
+		pass
+		# TODO FOR DavidPeng001: design interface
+		# TODO FOR rui-233: 用户图书续借表格查询爬虫实现
+
+@api_view(['POST'])
+def book_renew(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)
+		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
+		user = User.objects.get(id=s['id'])
+		status = robot.book_rernew(user.sessionid_space, data['bookid'])
+		if status == 0:
+			return JsonResponse({'status': 'ok'}, safe=False)
+		elif status == 1:  # sessionid_space expired
+			status_lib = robot.pre_login(user.id, user.password_space)
+			if status_lib == 0:
+				s = SessionStore()
+				s['data'] = [user.id, user.password_lib, user.password_space] + status_lib["session_data"] + [user.sessionid_space] + [data['bookid']]
+				s.create()                                                                                                           # additional data
+				response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
+				response.set_cookie('JSESSIONID', s.session_key)
+				return response
+		else:
+			return JsonResponse({'status': 'error'}, safe=False)
 
 
+@api_view(['POST'])
+def book_renew_with_captcha(request):
+	if request.method == 'POST':
+		data = json.loads(request.body)
+		captcha = data[u'captcha']
+		s = SessionStore(session_key=request.COOKIES['JSESSIONID']) # TODO: check is None
+		session_data = s["data"]
+		if robot.lib_login(session_data[:6], captcha) == 0:
+			s = SessionStore()
+			s['id'] = session_data[3]
+			s.create()
+			status = robot.book_rernew(session_data[0], session_data[-1]) # additional data: book id
+			if status == 0:
+				response =  JsonResponse({'status': 'ok'}, safe=False)
+				response.set_cookie('JSESSIONID', s.session_key)
+				return  response
+			elif status == 1:
+				return JsonResponse({'status': 'not login again'}, safe=False)
+			else:
+				return JsonResponse({'status': 'error'}, safe=False)
+		else:
+			return JsonResponse({'status': 'password wrong'}, safe=False) # password wrong, logout, TODO: delete record.
 

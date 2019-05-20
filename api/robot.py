@@ -61,19 +61,8 @@ def keyword_search(keyword,page):
 		books.append(book_info)
 	return  books
 
-
-
-def pre_login(personnelno, passwd_lib, passwd_space):
-	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
-	url_captcha = "https://libcas.jnu.edu.cn/cas/code/captcha.jpg" + str(random.uniform(0, 1))
-	# TODO: 随机化URL参数
-	# FIXME: 当url_captcha不变，会生成相同验证码图片
+def space_login(personnelno, passwd_space): # TODO: not 200 return -1
 	url_space = "https://libsouthic.jnu.edu.cn/login.userlogin"
-	headers = {
-		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
-		"Content-Type": "application/x-www-form-urlencoded"
-		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
-	}
 	data_space = {
 		"t:formdata": "YO0mInLsxupSFzTGH68d4QXjK7k=:H4sIAAAAAAAAAJWQPUoEQRCFywFlYWURwcBc014DN9HERRCEQYTBWHp6yrGlp7vtqnHWxMhLmHgCMdITbGDmHTyAiYGRgfODsLAimBUfj3of7+EdFqsBLMcu13anJAw6owAjF3IhvVTnKFh6JA7XI6FcQKNTkUpCMU5rKBUfaDTZRoJc+s2Taf9t7eUrgoUY+spZDs4cyQIZVuMLeSWHRtp8mHDQNt+deIalrvEXg/F/DY6DU0iUlGmhibSz08ds++zz/jUCmPhqBQZdg5dElQsZXcINAEPvB8xHmsTMOtS85tpt70835QrvLFom0crwvNpd8rH+/HS7H0EUQ08ZXacP27pmODRY1KAZrkXNUL2u/HRr5vwGvfD11LwBAAA=",
 		"t:submit": "[\"submit_0\",\"submit_0\"]",
@@ -81,18 +70,30 @@ def pre_login(personnelno, passwd_lib, passwd_space):
 		"password": passwd_space,
 		"submit_0": "登录",
 	}
-
-	sessionid_space = ''
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+		"Content-Type": "application/x-www-form-urlencoded"
+		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
+	}
 	response_space = requests.post(url_space, data=urllib.urlencode(data_space), headers=headers)
 	html = response_space.content.decode('utf8')
 	selector = etree.HTML(html)
 	error_test = selector.xpath("//div[@class='t-error']")
 	if error_test != []:
 		return {"status": 1}
-	for k, v in response_space.history[0].cookies.items():
-		if k == 'JSESSIONID':
-			sessionid_space = v
+	sessionid_space = response_space.history[0].cookies['JSESSIONID']
+	return {"status": 0, "session_data": [sessionid_space]}
 
+
+def pre_login(personnelno, passwd_lib):
+	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
+	url_captcha = "https://libcas.jnu.edu.cn/cas/code/captcha.jpg" + str(random.uniform(0, 1))
+	# FIXME: 当url_captcha不变，会生成相同验证码图片
+	headers = {
+		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
+		"Content-Type": "application/x-www-form-urlencoded"
+		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
+	}
 	response_lib = requests.get(url_lib, headers=headers)
 	sessionid_lib = response_lib.cookies['JSESSIONID']
 	tree = etree.HTML(response_lib.content.decode('utf8'))
@@ -108,27 +109,32 @@ def pre_login(personnelno, passwd_lib, passwd_space):
 		'execution': execution_token,
 		'_eventId': 'submit'
 	}
-	return {"status": 0, "session_data": (data_lib, sessionid_lib, sessionid_space, personnelno, passwd_lib, passwd_space) , "response_data": captcha_b64}
+	return {"status": 0, "session_data": [data_lib, sessionid_lib] , "response_data": captcha_b64}
 
+	# session_data: [personnelno, passwd_lib, passwd_space, data_lib, sessionid_lib, sessionid_space]
 def lib_login(session_data, captcha_text):
 	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
 	headers = {
 		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 		"Content-Type": "application/x-www-form-urlencoded"
 	}
-	data_lib = session_data[0]
+	data_lib = session_data[3]
 	data_lib['captcha'] = captcha_text
 	cookie_lib = RequestsCookieJar()
-	cookie_lib.set('JSESSIONID', session_data[1], domain="libcas.jnu.edu.cn", path='/cas')
+	cookie_lib.set('JSESSIONID', session_data[4], domain="libcas.jnu.edu.cn", path='/cas')
 	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=cookie_lib)
 	# TODO: check correctness
 	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
-	sessionid_space = session_data[2]
-	user = User(id=session_data[3], password_lib=session_data[4], password_space=session_data[5], sessionid_lib=sessionid_lib,
-	            sessionid_space=sessionid_space)
+	sessionid_space = session_data[5]
+	user = User(id=session_data[0], password_lib=session_data[1], password_space=session_data[2], sessionid_lib=sessionid_lib,
+            sessionid_space=sessionid_space)
 	user.save()
 	return 0
-
+	# else: # space_login not in request, just update sessionid_lib
+	# 	user = User.objects.get(id=session_data[0])
+	# 	user.sessionid_lib = sessionid_lib
+	# 	user.save()
+	# 	return 0
 def get_single_page(tree):
 	result_dict = {}
 	root_path = "//table[@class='table table-bordered table-hover table-striped iron-table']"
@@ -257,38 +263,6 @@ def room_booking(date, room, start, end, jsessionid):
 	else:
 		return -1        # bad connection
 
-def update_sessionid_space(personnelno, password_space):
-	url_space = "https://libsouthic.jnu.edu.cn/login.userlogin"
-	headers = {
-		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
-		"Content-Type": "application/x-www-form-urlencoded"
-		# 表示浏览器提交web表单时，表单数据会按照name1=value1&name2=value2键值对形式进行编码。
-	}
-	data_space = {
-		"t:formdata": "YO0mInLsxupSFzTGH68d4QXjK7k=:H4sIAAAAAAAAAJWQPUoEQRCFywFlYWURwcBc014DN9HERRCEQYTBWHp6yrGlp7vtqnHWxMhLmHgCMdITbGDmHTyAiYGRgfODsLAimBUfj3of7+EdFqsBLMcu13anJAw6owAjF3IhvVTnKFh6JA7XI6FcQKNTkUpCMU5rKBUfaDTZRoJc+s2Taf9t7eUrgoUY+spZDs4cyQIZVuMLeSWHRtp8mHDQNt+deIalrvEXg/F/DY6DU0iUlGmhibSz08ds++zz/jUCmPhqBQZdg5dElQsZXcINAEPvB8xHmsTMOtS85tpt70835QrvLFom0crwvNpd8rH+/HS7H0EUQ08ZXacP27pmODRY1KAZrkXNUL2u/HRr5vwGvfD11LwBAAA=",
-		"t:submit": "[\"submit_0\",\"submit_0\"]",
-		"userid": personnelno,
-		"password": password_space,
-		"submit_0": "登录",
-	}
-	cookie_space = ''
-
-
-	response_space = requests.post(url_space, data=urllib.urlencode(data_space), headers=headers)
-	html = response_space.content.decode('utf8')
-	selector = etree.HTML(html)
-	error_test = selector.xpath("//div[@class='t-error']")
-	if error_test != []:
-		return 1
-	for k, v in response_space.history[0].cookies.items():
-		if k == 'JSESSIONID':
-			cookie_space = v
-
-	User.objects.get(id=personnelno).update(sessionid_space=cookie_space)
-
-	return 0
-
-# 0 -> success  1 -> password wrong  -1 -> error
 
 def search_info(href):
 	url_site = "https://opac.jnu.edu.cn/opac/book/" + href
@@ -353,4 +327,9 @@ def search_info(href):
 	result['libinfo'] = result_loc
 
 	return result
+
+def book_rernew(sessionid_lib, book_id):
+	pass
+	#TODO FOR rui-233: 爬虫实现
+	# 0 -> ok 1 -> not login -1 -> bad connection
 		
