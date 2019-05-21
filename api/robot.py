@@ -329,7 +329,58 @@ def search_info(href):
 	return result
 
 def book_rernew(sessionid_lib, book_id):
-	pass
+	success = '{"errorMessage":"续借成功","successed":true}'
+	renewurl = "http://opac.jnu.edu.cn/opac/mylibrary/renewBook"
+	reheaders = {
+		"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36"
+	}
+	redata = {
+		"barCode": book_id
+	}
+	jar = requests.cookies.RequestsCookieJar()
+	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
+	rsp = requests.post(renewurl, headers=reheaders, data=redata, cookies=jar)
+	if rsp.status_code != 200:
+		# print('网页加载失败QAQ')
+		return 1
+	rsp = rsp.content.decode()
+	if rsp == success:
+		# print('续借成功~')
+		return 0
+	else:
+		# print('超过续借次数QAQ')
+		return 2
 	#TODO FOR rui-233: 爬虫实现
 	# 0 -> ok 1 -> not login -1 -> bad connection
+
+def book_renew_search(sessionid_lib):
+    '''
+
+    :param sessionid_lib:
+    :return: 书名和条形码及时间组成的data
+    '''
+    data = {}
+    baseurl = "http://opac.jnu.edu.cn/opac/mylibrary/borrowBooks"
+    baseheaders = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
+        "Connection": "keep-alive"
+    }
+    jar = requests.cookies.RequestsCookieJar()
+    jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
+    rsp = requests.get(baseurl, headers=baseheaders,cookies = jar)
+    rsp = rsp.content.decode()
+    #print(rsp)
+    html = etree.HTML(rsp)
+    html_data = html.xpath('//tr')
+    for i in range(1,len(html_data)):
+        data1 = html_data[i].xpath('//td[2]/a/text()')
+        data2 = html_data[i].xpath('//td[3]/text()')
+        data3 = html_data[i].xpath('//td[4]/text()')
+        data4= html_data[i].xpath('//td[6]/text()')
+        #print(data1[i-1],data2[i-1],data3[i-1],data4[i-1])
+        data[data1[i-1]] = data2[i-1]
+        data[data1[i-1] + "-->已续借次数："] = data3[i-1]
+        data[data1[i-1] + "-->到期时间："] = data4[i-1]
+    return data
 		
