@@ -1,0 +1,5 @@
+*.py[cod]
+*.log
+*.xml
+.idea/*
+**/migrations/*
