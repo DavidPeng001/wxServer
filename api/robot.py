@@ -82,7 +82,7 @@ def space_login(personnelno, passwd_space): # TODO: not 200 return -1
 	if error_test != []:
 		return {"status": 1}
 	sessionid_space = response_space.history[0].cookies['JSESSIONID']
-	return {"status": 0, "session_data": [sessionid_space]}
+	return {"status": 0, "session_data": sessionid_space}
 
 
 def pre_login(personnelno, passwd_lib):
@@ -111,23 +111,31 @@ def pre_login(personnelno, passwd_lib):
 	}
 	return {"status": 0, "session_data": [data_lib, sessionid_lib] , "response_data": captcha_b64}
 
-	# session_data: [personnelno, passwd_lib, passwd_space, data_lib, sessionid_lib, sessionid_space]
+	# session_data = {
+	# 				  'id': personnelno,
+	# 				  'passwd_lib': password_lib,
+	# 				  'passwd_spacep': password_space,
+	#                 'data_lib':status_lib["session_data"][0],
+	#                 'sessionid_lib': status_lib["session_data"][1],
+	#                 'sessionid_space': status_space["session_data"]
+	# 				}
+
 def lib_login(session_data, captcha_text):
 	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
 	headers = {
 		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 		"Content-Type": "application/x-www-form-urlencoded"
 	}
-	data_lib = session_data[3]
+	data_lib = session_data['data_lib']
 	data_lib['captcha'] = captcha_text
 	cookie_lib = RequestsCookieJar()
-	cookie_lib.set('JSESSIONID', session_data[4], domain="libcas.jnu.edu.cn", path='/cas')
+	cookie_lib.set('JSESSIONID', session_data['sessionid_lib'], domain="libcas.jnu.edu.cn", path='/cas')
 	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=cookie_lib)
 	# TODO: check correctness
 	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
-	sessionid_space = session_data[5]
-	user = User(id=session_data[0], password_lib=session_data[1], password_space=session_data[2], sessionid_lib=sessionid_lib,
-            sessionid_space=sessionid_space)
+	sessionid_space = session_data['sessionid_space']
+	user = User(id=session_data['id'], password_lib=session_data['passwd_lib'], password_space=session_data['passwd_space'],
+	            sessionid_lib=sessionid_lib, sessionid_space=sessionid_space)
 	user.save()
 	return 0
 	# else: # space_login not in request, just update sessionid_lib
@@ -328,7 +336,7 @@ def search_info(href):
 
 	return result
 
-def book_rernew(sessionid_lib, book_id):
+def book_renew(sessionid_lib, book_id):
 	success = '{"errorMessage":"续借成功","successed":true}'
 	renewurl = "http://opac.jnu.edu.cn/opac/mylibrary/renewBook"
 	reheaders = {
@@ -355,32 +363,34 @@ def book_rernew(sessionid_lib, book_id):
 	# 0 -> ok 1 -> not login -1 -> bad connection
 
 def book_renew_search(sessionid_lib):
-    '''
+	'''
+	:param sessionid_lib:
+	:return: 书名和条形码及时间组成的data
+	'''
+	baseurl = "http://opac.jnu.edu.cn/opac/mylibrary/borrowBooks"
+	baseheaders = {
+		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
+		"Connection": "keep-alive"
+	}
+	jar = requests.cookies.RequestsCookieJar()
+	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
+	rsp = requests.get(baseurl, headers=baseheaders,cookies = jar)
+	rsp = rsp.content.decode()
+	#print(rsp)
+	html = etree.HTML(rsp)
+	html_data = html.xpath('//tr')
 
-    :param sessionid_lib:
-    :return: 书名和条形码及时间组成的data
-    '''
-    data = {}
-    baseurl = "http://opac.jnu.edu.cn/opac/mylibrary/borrowBooks"
-    baseheaders = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
-        "Connection": "keep-alive"
-    }
-    jar = requests.cookies.RequestsCookieJar()
-    jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
-    rsp = requests.get(baseurl, headers=baseheaders,cookies = jar)
-    rsp = rsp.content.decode()
-    #print(rsp)
-    html = etree.HTML(rsp)
-    html_data = html.xpath('//tr')
-    for i in range(1,len(html_data)):
-        data1 = html_data[i].xpath('//td[2]/a/text()')
-        data2 = html_data[i].xpath('//td[3]/text()')
-        data3 = html_data[i].xpath('//td[4]/text()')
-        data4= html_data[i].xpath('//td[6]/text()')
-        #print(data1[i-1],data2[i-1],data3[i-1],data4[i-1])
-        data[data1[i-1]] = data2[i-1]
-        data[data1[i-1] + "-->已续借次数："] = data3[i-1]
-        data[data1[i-1] + "-->到期时间："] = data4[i-1]
-    return data
+	result = []
+	for i in range(1, len(html_data)):
+		book_name = html_data[i].xpath('//td[2]/a/text()')[0]
+		book_id = html_data[i].xpath('//td[3]/text()')[0]
+		book_expire_time = html_data[i].xpath('//td[4]/text()')[0]
+		book_renew_times = html_data[i].xpath('//td[6]/text()')[0]
+		data = dict()
+		data["book_name"] = book_name
+		data["book_id"] = book_id
+		data["book_expire_time"] = book_expire_time
+		data["book_renew_times"] = book_renew_times
+		result.append(data)
+	return result
 		
