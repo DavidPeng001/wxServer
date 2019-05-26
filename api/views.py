@@ -106,7 +106,7 @@ def login_with_captcha(request):
 		status = robot.lib_login(session_data, captcha)
 		if status == 0:
 			s = SessionStore()
-			s['id'] = session_data[3]
+			s['id'] = session_data['id']
 			s.create()
 			response = JsonResponse({'status': 0}, safe=False)
 			response.set_cookie('JSESSIONID', s.session_key)
