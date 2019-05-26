@@ -89,6 +89,7 @@ def pre_login(personnelno, passwd_lib):
 	url_lib = "https://libcas.jnu.edu.cn/cas/login?service=http://opac.jnu.edu.cn/opac/search/simsearch"
 	url_captcha = "https://libcas.jnu.edu.cn/cas/code/captcha.jpg" + str(random.uniform(0, 1))
 	# FIXME: 当url_captcha不变，会生成相同验证码图片
+
 	headers = {
 		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36",
 		"Content-Type": "application/x-www-form-urlencoded"
@@ -131,7 +132,15 @@ def lib_login(session_data, captcha_text):
 	cookie_lib = RequestsCookieJar()
 	cookie_lib.set('JSESSIONID', session_data['sessionid_lib'], domain="libcas.jnu.edu.cn", path='/cas')
 	response_login = requests.post(url_lib, headers=headers, data=data_lib, cookies=cookie_lib)
-	# TODO: check correctness
+	tree = etree.HTML(response_login.content)
+	msg = tree.xpath("//div[@id='ltlMessage']/span[@id='msg']/text()")
+	if msg != []:
+		if msg[0] == u'账号或密码错误':
+			return 102
+		elif msg[0] == u'验证码错误':
+			return 101
+		else:
+			return 103
 	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
 	sessionid_space = session_data['sessionid_space']
 	user = User(id=session_data['id'], password_lib=session_data['passwd_lib'], password_space=session_data['passwd_space'],
