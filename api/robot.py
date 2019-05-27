@@ -381,10 +381,13 @@ def book_renew_search(sessionid_lib):
 		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
 		"Connection": "keep-alive"
 	}
+	b = "读者登录"
 	jar = requests.cookies.RequestsCookieJar()
 	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
 	rsp = requests.get(baseurl, headers=baseheaders,cookies = jar)
 	rsp = rsp.content.decode()
+	if b in rsp:
+		return {"status": 1}
 	#print(rsp)
 	html = etree.HTML(rsp)
 	html_data = html.xpath('//tr')
@@ -401,5 +404,5 @@ def book_renew_search(sessionid_lib):
 		data["book_expire_time"] = book_expire_time
 		data["book_renew_times"] = book_renew_times
 		result.append(data)
-	return result
+	return {'status': 0, 'table': result}
 		
