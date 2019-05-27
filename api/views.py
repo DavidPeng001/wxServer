@@ -187,7 +187,7 @@ def book_renew_search(request):
 		user = User.objects.get(id=s['id'])
 		status = robot.book_renew_search(user.sessionid_lib)
 		if status == 0:
-			return JsonResponse({'status': 'ok'}, safe=False)
+			return JsonResponse({'status': 0, 'table': status['table']}, safe=False)
 		elif status == 1:  # sessionid_space expired
 			status_lib = robot.pre_login(user.id, user.password_space)
 			if status_lib == 0:
@@ -238,19 +238,19 @@ def book_renew(request):
 		user = User.objects.get(id=s['id'])
 		status = robot.book_renew(user.sessionid_lib, data['bookid'])
 		if status == 0:
-			return JsonResponse({'status': 'ok'}, safe=False)
-		elif status == 1:  # sessionid_space expired
+			return JsonResponse({'status': 0}, safe=False)
+		elif status == 1:  # sessionid expired
 			status_lib = robot.pre_login(user.id, user.password_space)
 			if status_lib["status"] == 0:
 				s = SessionStore()
 				s['data'] = {'id': user.id, 'passwd_lib': user.password_lib, 'passwd_space': user.password_space, 'data_lib':status_lib["session_data"][0],
 							 'sessionid_lib': status_lib["session_data"][1], 'sessionid_space': user.sessionid_space, 'book_id': data['bookid'] }
 				s.create()                                                                                                           # additional data
-				response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
+				response = JsonResponse({'status': 1, 'captcha': status["response_data"]}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 		else:
-			return JsonResponse({'status': 'error'}, safe=False) # web error
+			return JsonResponse({'status': status}, safe=False) # web error
 
 
 @api_view(['POST'])
@@ -271,10 +271,8 @@ def book_renew_with_captcha(request):
 				response =  JsonResponse({'status': 0}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return  response
-			elif status == 1:
-				return JsonResponse({'status': 1}, safe=False)
 			else:
-				return JsonResponse({'status': -1}, safe=False)
+				return JsonResponse({'status': status}, safe=False)
 		else:
 			return JsonResponse({'status': status_login}, safe=False) # password wrong, logout, TODO: delete record.
 			# interface info is same as function book_renew_search_with_captcha(request)

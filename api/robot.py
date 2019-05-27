@@ -136,17 +136,17 @@ def lib_login(session_data, captcha_text):
 	msg = tree.xpath("//div[@id='ltlMessage']/span[@id='msg']/text()")
 	if msg != []:
 		if msg[0] == u'账号或密码错误':
-			return 102
+			return {'status': 102}
 		elif msg[0] == u'验证码错误':
-			return 101
+			return {'status': 101}
 		else:
-			return 103
+			return {'status': 103}
 	sessionid_lib = response_login.history[-1].request._cookies["JSESSIONID"] # TODO: test needed
 	sessionid_space = session_data['sessionid_space']
 	user = User(id=session_data['id'], password_lib=session_data['passwd_lib'], password_space=session_data['passwd_space'],
 	            sessionid_lib=sessionid_lib, sessionid_space=sessionid_space)
 	user.save()
-	return 0
+	return {'status': 0}
 	# else: # space_login not in request, just update sessionid_lib
 	# 	user = User.objects.get(id=session_data[0])
 	# 	user.sessionid_lib = sessionid_lib
@@ -359,17 +359,16 @@ def book_renew(sessionid_lib, book_id):
 	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
 	rsp = requests.post(renewurl, headers=reheaders, data=redata, cookies=jar)
 	if rsp.status_code != 200:
-		# print('网页加载失败QAQ')
-		return 1
+		return -1
 	rsp = rsp.content.decode()
+	if '读者登录' in rsp: # XXX: use xpath
+		return  1
 	if rsp == success:
-		# print('续借成功~')
 		return 0
 	else:
-		# print('超过续借次数QAQ')
 		return 2
-	#TODO FOR rui-233: 爬虫实现
-	# 0 -> ok 1 -> not login -1 -> bad connection
+
+	# 0 -> ok 1 -> not login 2 -> can't renew again -1 -> bad connection
 
 def book_renew_search(sessionid_lib):
 	'''
@@ -381,14 +380,14 @@ def book_renew_search(sessionid_lib):
 		"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36",
 		"Connection": "keep-alive"
 	}
-	b = "读者登录"
 	jar = requests.cookies.RequestsCookieJar()
 	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
 	rsp = requests.get(baseurl, headers=baseheaders,cookies = jar)
+	if rsp.status_code != 200:
+		return {"status": -1}
 	rsp = rsp.content.decode()
-	if b in rsp:
+	if '读者登录' in rsp: # XXX: use xpath
 		return {"status": 1}
-	#print(rsp)
 	html = etree.HTML(rsp)
 	html_data = html.xpath('//tr')
 
