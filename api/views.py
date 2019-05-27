@@ -104,7 +104,7 @@ def login_with_captcha(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID']) # TODO: check is None
 		session_data = s["data"]
 		status = robot.lib_login(session_data, captcha)
-		if status == 0:
+		if status["status"] == 0:
 			s = SessionStore()
 			s['id'] = session_data['id']
 			s.create()
@@ -168,14 +168,14 @@ def room_booking(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
 		user = User.objects.get(id=s['id'])
 		status = robot.room_booking(data['date'], data['room'], data['start'], data['end'], user.sessionid_space)
-		if status == 2:  # sessionid_space expired
+		if status["status"] == 2:  # sessionid_space expired
 			status_space = robot.space_login(user.id, user.password_space)
 			if status_space["status"] == 0:
 				user.sessionid_space = status_space["session_data"]
 				user.save()
 				status = robot.room_booking(data['date'], data['room'], data['start'], data['end'], status_space["session_data"])
 			else:
-				status = 3  # password wrong
+				status["status"] = 3  # password wrong
 
 		return JsonResponse({'status': status}, safe=False)
 
@@ -186,11 +186,11 @@ def book_renew_search(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
 		user = User.objects.get(id=s['id'])
 		status = robot.book_renew_search(user.sessionid_lib)
-		if status == 0:
+		if status["status"] == 0:
 			return JsonResponse({'status': 0, 'table': status['table']}, safe=False)
-		elif status == 1:  # sessionid_space expired
+		elif status["status"] == 1:  # sessionid_space expired
 			status_lib = robot.pre_login(user.id, user.password_space)
-			if status_lib == 0:
+			if status_lib["status"] == 0:
 				s = SessionStore()
 				s['data'] = {'id': user.id, 'passwd_lib': user.password_lib, 'passwd_space': user.password_space, 'data_lib':status_lib["session_data"][0],
 							 'sessionid_lib': status_lib["session_data"][1], 'sessionid_space': user.sessionid_space }
@@ -209,22 +209,22 @@ def book_renew_search_with_captcha(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID']) # TODO: check is None
 		session_data = s["data"]
 		status_login = robot.lib_login(session_data, captcha)
-		if status_login == 0:
+		if status_login["status"] == 0:
 			s = SessionStore()
 			s['id'] = session_data['id']
 			s.create()
 			user = User.objects.get(id=session_data['id'])
 			status = robot.book_renew_search(user.sessionid_lib)
-			if status == 0:
+			if status["status"] == 0:
 				response =  JsonResponse({'status': 0}, safe=False) # 0 for success
 				response.set_cookie('JSESSIONID', s.session_key)
 				return  response
-			elif status == 1:
+			elif status["status"] == 1:
 				return JsonResponse({'status': 1}, safe=False) # 1 for cookie expired
 			else:
 				return JsonResponse({'status': -1}, safe=False) # 2 for web error
 		else:
-			return JsonResponse({'status': status_login}, safe=False)
+			return JsonResponse({'status': status_login["status"]}, safe=False)
 			# 101 for captcha wrong
 			# 102 for username or password wrong
 			# 103 for unkonown
@@ -237,9 +237,9 @@ def book_renew(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID'])
 		user = User.objects.get(id=s['id'])
 		status = robot.book_renew(user.sessionid_lib, data['bookid'])
-		if status == 0:
+		if status["status"] == 0:
 			return JsonResponse({'status': 0}, safe=False)
-		elif status == 1:  # sessionid expired
+		elif status["status"] == 1:  # sessionid expired
 			status_lib = robot.pre_login(user.id, user.password_space)
 			if status_lib["status"] == 0:
 				s = SessionStore()
@@ -261,18 +261,18 @@ def book_renew_with_captcha(request):
 		s = SessionStore(session_key=request.COOKIES['JSESSIONID']) # TODO: check is None
 		session_data = s["data"]
 		status_login = robot.lib_login(session_data['id'], captcha)
-		if status_login == 0:
+		if status_login["status"] == 0:
 			s = SessionStore()
 			s['id'] = session_data[0]
 			s.create()
 			user = User.objects.get(id=session_data['id'])
 			status = robot.book_renew(user.sessionid_lib, session_data['book_id']) # additional data: book id
-			if status == 0:
+			if status["status"] == 0:
 				response =  JsonResponse({'status': 0}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return  response
 			else:
 				return JsonResponse({'status': status}, safe=False)
 		else:
-			return JsonResponse({'status': status_login}, safe=False) # password wrong, logout, TODO: delete record.
+			return JsonResponse({'status': status_login["status"]}, safe=False) # password wrong, logout, TODO: delete record.
 			# interface info is same as function book_renew_search_with_captcha(request)

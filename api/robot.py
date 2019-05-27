@@ -271,14 +271,13 @@ def room_booking(date, room, start, end, jsessionid):
 		try:
 			data = json.loads(response_booking.content)
 		except ValueError:
-			return 2     # not login
-		print data
+			return {'status': 2}     # not login
 		if u'redirectURL' in data:
-			return 0     # success
+			return {'status': 0}     # success
 		else:
-			return 1     # time conflict or others
+			return {'status': 1}     # time conflict or others
 	else:
-		return -1        # bad connection
+		return {'status': -1}        # bad connection
 
 
 def search_info(href):
@@ -359,14 +358,14 @@ def book_renew(sessionid_lib, book_id):
 	jar.set('JSESSIONID', sessionid_lib, domain="opac.jnu.edu.cn", path='/')
 	rsp = requests.post(renewurl, headers=reheaders, data=redata, cookies=jar)
 	if rsp.status_code != 200:
-		return -1
+		return {'status': -1} # bad connection
 	rsp = rsp.content.decode()
 	if '读者登录' in rsp: # XXX: use xpath
-		return  1
+		return  {'status': 1} # not login
 	if rsp == success:
-		return 0
+		return {'status': 0} # success
 	else:
-		return 2
+		return {'status': 2} #can't renew again
 
 	# 0 -> ok 1 -> not login 2 -> can't renew again -1 -> bad connection
 
