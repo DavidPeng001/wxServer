@@ -65,7 +65,6 @@ def login(request):
 				return JsonResponse({'status': 1}, safe=False)
 		else:
 			if User.objects.get(id=personnelno).password_lib == password_lib:
-
 				s = SessionStore()
 				s['id'] = personnelno
 				# delete previous session
@@ -87,14 +86,15 @@ def update_captcha(request):
 		if status["status"] == 0:
 			session_data["data_lib"] = status["session_data"][0]
 			session_data["sessionid_lib"] = status["session_data"][1]
+			# no need to check space password correction, because it already checked.
 			s = SessionStore()
 			s['data'] = session_data
 			s.create()
-			response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
+			response = JsonResponse({'status': 0, 'captcha': status["response_data"]}, safe=False)
 			response.set_cookie('JSESSIONID', s.session_key)
 			return response
 		else:
-			return JsonResponse({'status': 'wrong'}, safe=False)
+			return JsonResponse({'status': 1}, safe=False) # something wrong, back and login again
 		
 @api_view(['POST'])
 def login_with_captcha(request):
@@ -195,11 +195,11 @@ def book_renew_search(request):
 				s['data'] = {'id': user.id, 'passwd_lib': user.password_lib, 'passwd_space': user.password_space, 'data_lib':status_lib["session_data"][0],
 							 'sessionid_lib': status_lib["session_data"][1], 'sessionid_space': user.sessionid_space }
 				s.create()  # additional data
-				response = JsonResponse({'status': 2, 'captcha': status["response_data"]}, safe=False)
+				response = JsonResponse({'status': 1, 'captcha': status["response_data"]}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 		else:
-			return JsonResponse({'status': 1}, safe=False)
+			return JsonResponse({'status': -1}, safe=False)
 
 @api_view(['POST'])
 def book_renew_search_with_captcha(request):
