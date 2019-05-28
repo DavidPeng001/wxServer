@@ -195,11 +195,11 @@ def book_renew_search(request):
 				s['data'] = {'id': user.id, 'passwd_lib': user.password_lib, 'passwd_space': user.password_space, 'data_lib':status_lib["session_data"][0],
 							 'sessionid_lib': status_lib["session_data"][1], 'sessionid_space': user.sessionid_space }
 				s.create()  # additional data
-				response = JsonResponse({'status': 'captcha_needed', 'captcha': status["response_data"]}, safe=False)
+				response = JsonResponse({'status': 2, 'captcha': status["response_data"]}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 		else:
-			return JsonResponse({'status': 'error'}, safe=False)
+			return JsonResponse({'status': 1}, safe=False)
 
 @api_view(['POST'])
 def book_renew_search_with_captcha(request):
