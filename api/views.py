@@ -58,11 +58,11 @@ def login(request):
 				s['data'] = {'id': personnelno, 'passwd_lib': password_lib, 'passwd_space': password_space, 'data_lib':status_lib["session_data"][0],
 							 'sessionid_lib': status_lib["session_data"][1], 'sessionid_space': status_space["session_data"] }
 				s.create()
-				response = JsonResponse({'status': 'captcha_needed', 'captcha': status_lib["response_data"]}, safe=False)
+				response = JsonResponse({'status': 2, 'captcha': status_lib["response_data"]}, safe=False) # captcha needed
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 			else:
-				return JsonResponse({'status': 'wrong'}, safe=False)
+				return JsonResponse({'status': 1}, safe=False)
 		else:
 			if User.objects.get(id=personnelno).password_lib == password_lib:
 
@@ -71,11 +71,11 @@ def login(request):
 				# delete previous session
 				Session.objects.filter(session_data = s.encode({'id': personnelno})).delete()
 				s.save()
-				response = JsonResponse({'status': 'ok'}, safe=False)
+				response = JsonResponse({'status': 0}, safe=False)
 				response.set_cookie('JSESSIONID', s.session_key)
 				return response
 			else:
-				return JsonResponse({'status': 'wrong'}, safe=False)
+				return JsonResponse({'status': 1}, safe=False) # wrong password / username
 			# TODO: session 过期设置
 
 @api_view(['GET'])
