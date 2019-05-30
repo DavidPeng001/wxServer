@@ -59,6 +59,7 @@ def keyword_search(keyword,page):
 		if isbn != []:
 			book_info['isbn'] = isbn[-1].strip()
 		books.append(book_info)
+	print books
 	return  books
 
 def space_login(personnelno, passwd_space): # TODO: not 200 return -1
