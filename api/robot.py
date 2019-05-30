@@ -28,6 +28,7 @@ def keyword_search(keyword,page):
 		exit()
 	print 'Connection Established \n *****'
 	# html = html.decode('utf8')
+	print html
 	tree = etree.HTML(html)
 
 	books = []
@@ -60,7 +61,7 @@ def keyword_search(keyword,page):
 			book_info['isbn'] = isbn[-1].strip()
 		books.append(book_info)
 	print books
-	return  books
+	return books
 
 def space_login(personnelno, passwd_space): # TODO: not 200 return -1
 	url_space = "https://libsouthic.jnu.edu.cn/login.userlogin"
