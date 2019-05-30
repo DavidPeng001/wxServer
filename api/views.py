@@ -216,7 +216,7 @@ def book_renew_search_with_captcha(request):
 			user = User.objects.get(id=session_data['id'])
 			status = robot.book_renew_search(user.sessionid_lib)
 			if status["status"] == 0:
-				response =  JsonResponse({'status': 0}, safe=False) # 0 for success
+				response =  JsonResponse({'status': 0, 'table': status['table']}, safe=False) # 0 for success
 				response.set_cookie('JSESSIONID', s.session_key)
 				return  response
 			elif status["status"] == 1:
